@@ -13,10 +13,11 @@ class Parent(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     name=db.Column(db.String(20),nullable=False)
     age=db.Column(db.Integer,nullable=False)
-    childrens=db.relationship("Child",backref="parent",lazy=True)
+    childrens=db.relationship("Child",backref="parent",lazy=True,cascade="all,delete",passive_deletes=True)
     
     def format(ins):
         return jsonify({
+            "success":True,
             "name":ins.name,
             "age":ins.age
         })
@@ -25,11 +26,12 @@ class Child(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     name=db.Column(db.String(20),nullable=False)
     age=db.Column(db.Integer,nullable=False)
-    parent_id=db.Column(db.Integer,db.ForeignKey('parents.id'),nullable=False)
+    parent_id=db.Column(db.Integer,db.ForeignKey('parents.id',ondelete="cascade"),nullable=False)
     
         
     def format(ins):
         return jsonify({
+            "success":True,
             "name":ins.name,
             "age":ins.age
         })
@@ -41,7 +43,7 @@ def index():
 #api section
 
 #1.Get parent by Id . Id should be an Integer
-@app.route('/parents/<int:parent_id>',methods=['GET'])
+@app.route('/parents/<int:parent_id>/',methods=['GET'])
 def get_parent(parent_id=None):
     if parent_id==None:
         return jsonify({
@@ -58,7 +60,7 @@ def get_parent(parent_id=None):
         abort(503)
 
 #2.Create a Parent
-@app.route('/parent/create/',methods=['POST'])
+@app.route('/parents/',methods=['POST'])
 def create_parent():
     data=request.get_json()
     if data is None:
@@ -72,12 +74,30 @@ def create_parent():
             "message":"Record successfully created",
             "code":200
         })
+# Delete a Parent using the Parent Id.
+@app.route('/parents/<int:parent_id>/delete/',methods=["DELETE"])
+def delete_parent(parent_id):
+    try:
+        parent=Parent.query.filter(Parent.id==parent_id).one_or_none()
+        if parent is None:
+            return jsonify({
+            "success":False,
+            "message":"Invalid parent Id",
+            "error_code":404
+            })
+        temp=parent
+        db.session.delete(parent)
+        db.session.commit()
+        return temp.format()
+    except:
+        db.session.rollback()
+    finally:
+        db.session.close()
 #3. create a child . Accepted methods POST . Url:/parent/<parent_id>/child/create/
-@app.route('/parents/<int:parent_id>/child/create/',methods=["POST"])
+@app.route('/parents/<int:parent_id>/childrens/',methods=["POST"])
 def create_child(parent_id):
     data=request.get_json()
     data_keys=[i for i in data.keys()]
-
     parent=Parent.query.filter(Parent.id==parent_id).one_or_none()
     if parent is None:
         return jsonify({
@@ -108,6 +128,8 @@ def create_child(parent_id):
         except:
             abort(503)
             db.session.rollback()
+        finally:
+            db.session.close()
 
 #4. get all the childrens of a parent by parent Id
 @app.route('/parents/<int:parent_id>/childrens/')
@@ -126,7 +148,7 @@ def get_chidlren_of_parent(parent_id):
         except:
             abort(500)
 
-    
+
 
 # error handler section
 
