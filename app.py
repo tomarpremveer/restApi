@@ -61,7 +61,7 @@ def token(f):
 def create_user():
     try:
         data=request.args.get('name','Default Value')
-        return jsonify({'message':data})
+        return jsonify({'name':data})
     except:
         return jsonify({'message':'hlo'})
 @app.route('/delete/user/<int:id>',methods=['DELETE'])
@@ -87,7 +87,7 @@ def create_review():
     pass
 
 #5.Delete review
-@app.route('/delete/movie/<int:movie_id/review/<int:review_id>',methods=['DELETE'])
+@app.route('/delete/movie/<int:movie_id>/review/<int:review_id>',methods=['DELETE'])
 def delete_review():
     pass
 # error handler section
