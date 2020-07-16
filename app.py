@@ -1,6 +1,7 @@
 from flask import Flask,render_template,jsonify,abort,request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from werkzeug.security import generate_password_hash,check_password_hash
 from functools import wraps
 #from flask_cors import CORS
 app=Flask(__name__)
@@ -35,9 +36,8 @@ class Review(db.Model):
 class User(db.Model):
     __tablename__="users"
     id=db.Column(db.Integer,primary_key=True)
-    name=db.Column(db.String(10),nullable=False)
     username=db.Column(db.String(10),nullable=False)
-    password=db.Column(db.String(10),nullable=False)
+    password=db.Column(db.String(100),nullable=False)
   #index page  
 @app.route('/')
 def index():
@@ -60,13 +60,23 @@ def token(f):
 @app.route('/create/user',methods=['POST'])
 def create_user():
     try:
-        data=request.args.get('name','Default Value')
-        return jsonify({'name':data})
-    except:
-        return jsonify({'message':'hlo'})
-@app.route('/delete/user/<int:id>',methods=['DELETE'])
-def delete_user():
-    pass
+        data=request.get_json()
+        username=data["username"]
+        password=data["pass"]
+        #password=generate_password_hash(password)
+        user=User(username=username,password=password)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'message':'user created successfully'}),200
+    except :
+        db.session.rollback()
+        return jsonify({'success':False,'error_message':"couldn't create a user account"})
+@app.route('/user/<int:id>',methods=['DELETE'])
+def delete_user(id=None):
+    if id == None:
+            return jsonify({'a':'bad request'})
+    else:
+        return jsonify({'a':'b'})
 @app.route('/update/user',methods=['PUT','PATCH'])
 def update_user():
     pass
@@ -75,7 +85,7 @@ def update_user():
 def create_movie():
     return jsonify({'message':'you have successfully reached movie creation route'})
 #3.Delete a movie
-@app.route('/delete/movie/<int:id>',methods=['DELETE'])
+@app.route('/movie/<int:id>',methods=['DELETE'])
 def delete_movie(id):
     pass
 #Reviews endpoint
@@ -87,7 +97,7 @@ def create_review():
     pass
 
 #5.Delete review
-@app.route('/delete/movie/<int:movie_id>/review/<int:review_id>',methods=['DELETE'])
+@app.route('/movie/<int:movie_id>/review/<int:review_id>',methods=['DELETE'])
 def delete_review():
     pass
 # error handler section
