@@ -72,14 +72,33 @@ def create_user():
         db.session.rollback()
         return jsonify({'success':False,'error_message':"couldn't create a user account"})
 @app.route('/user/<int:id>',methods=['DELETE'])
-def delete_user(id=None):
-    if id == None:
-            return jsonify({'a':'bad request'})
-    else:
-        return jsonify({'a':'b'})
-@app.route('/update/user',methods=['PUT','PATCH'])
-def update_user():
-    pass
+def delete_user(id=0):
+    try:
+        user=User.query.filter_by(id=id).one_or_none()
+        if user is None:
+            abort(404)
+        else:
+            db.session.delete(user)
+            db.session.commit()
+            return jsonify({
+                "success":True,
+                "code":200,
+                'message':"User deleted successfully",
+                }),200
+    except:
+        db.session.rollback()
+        return jsonify({'message':'Some error occured'})
+@app.route('/update/user/<int:id>',methods=['PUT','PATCH'])
+def update_user(id):
+    try:
+        user=User.query.filter_by(id=id).one_or_none()
+        if user is None:
+            abort(404)
+        else:
+            data=request.get_json()
+            
+    except:
+        pass
 #2.create a movie
 @app.route('/create/movie',methods=['POST'])
 def create_movie():
@@ -101,7 +120,13 @@ def create_review():
 def delete_review():
     pass
 # error handler section
-
+@app.errorhandler(400)
+def bad_request(error):
+    return jsonify({
+        "success":False,
+        "error_code":400,
+        "message":"Bad request"
+    }),400
 @app.errorhandler(404)
 def not_found_404(error):
     return jsonify({
