@@ -38,6 +38,11 @@ class User(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     username=db.Column(db.String(10),nullable=False)
     password=db.Column(db.String(100),nullable=False)
+
+    def update_db(self,data):
+        for (key,value) in data.items():
+            setattr(self,key,value)
+        db.session.commit()
   #index page  
 @app.route('/')
 def index():
@@ -62,7 +67,7 @@ def create_user():
     try:
         data=request.get_json()
         username=data["username"]
-        password=data["pass"]
+        password=data["password"]
         #password=generate_password_hash(password)
         user=User(username=username,password=password)
         db.session.add(user)
@@ -95,10 +100,36 @@ def update_user(id):
         if user is None:
             abort(404)
         else:
+            keys=0
             data=request.get_json()
-            
+            #if no data is provided in the url
+            if data is None:
+                return jsonify({
+                    'success':False,
+                    'message':'No data to update was provided in the url',
+                    'error_code':400
+                    }),400
+            if data and  "username" in data.keys():
+                keys+=1
+            if data and "password" in data.keys():
+                keys+=1
+            # if data provided is gibrish data i.e does not match the fields of the database
+            if keys ==0:
+                return jsonify({
+                    'success':False,
+                    'message':'Data provided doesn\'t match with the columns of database',
+                    'error_code':400
+                    }),400
+            else:
+                user.update_db(data)
+                return jsonify({
+                    'success':True,
+                    'message':'user updated successfully',
+                    'code':200
+                }),200
+
     except:
-        pass
+        return jsonify({'message':'Some error occured'})
 #2.create a movie
 @app.route('/create/movie',methods=['POST'])
 def create_movie():
