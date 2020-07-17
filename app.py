@@ -129,11 +129,14 @@ def update_user(id):
                 }),200
 
     except:
-        return jsonify({'message':'Some error occured'})
+        return jsonify({'message':'Some error occured \n Please try again'})
 #2.create a movie
 @app.route('/create/movie',methods=['POST'])
 def create_movie():
-    return jsonify({'message':'you have successfully reached movie creation route'})
+    try:
+        pass
+    except:
+        return jsonify({'message':'some errror occured \n Please try again'})
 #3.Delete a movie
 @app.route('/movie/<int:id>',methods=['DELETE'])
 def delete_movie(id):
