@@ -1,14 +1,23 @@
 from flask import Flask,render_template,jsonify,abort,request
+from flask_caching import Cache
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash,check_password_hash
 from functools import wraps
+from datetime import datetime
 #from flask_cors import CORS
 app=Flask(__name__)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"]=False
 app.config["SQLALCHEMY_DATABASE_URI"]="mysql+pymysql://root:7500Monty###@localhost/restApi"
 db=SQLAlchemy(app)
 migrate=Migrate(app,db)
+cache_config={
+    'DEBUG':True,
+    "CACHE_TYPE":"simple",
+    "CACHE_DEFAULT_TIMEOUT":300
+}
+app.config.from_mapping(cache_config)
+cache=Cache(app)
 #CORS(app)
 class Movie(db.Model):
     __tablename__="movies"
@@ -65,9 +74,24 @@ def token(f):
 @app.route('/create/user',methods=['POST'])
 def create_user():
     try:
+        username,password="",""
         data=request.get_json()
-        username=data["username"]
-        password=data["password"]
+        if data is None:
+            return jsonify({
+                    'success':False,
+                    'message':'No data to update was provided in the url',
+                    'error_code':400
+                    }),400
+        if data and 'username' in data.keys():
+            username=data["username"]
+        if data and 'password' in data.keys():
+            password=data["password"]
+        if username="" or password="":
+            return jsonify({
+                    'success':False,
+                    'message':'No data to update was provided in the url',
+                    'error_code':400
+                    }),400
         #password=generate_password_hash(password)
         user=User(username=username,password=password)
         db.session.add(user)
@@ -129,25 +153,88 @@ def update_user(id):
                 }),200
 
     except:
-        return jsonify({'message':'Some error occured \n Please try again'})
+        return jsonify({'message':'Some error occured. Please try again'})
 #2.create a movie
-@app.route('/create/movie',methods=['POST'])
+@app.route('/movie',methods=['POST'])
 def create_movie():
     try:
-        pass
+        data=request.get_json()
+        if data is None:
+            return jsonify({'message':'some errror occured. Please try again'})
+        else:
+            movie=Movie(name=data["name"],runtime=data["runtime"],release_date=datetime.now())
+            db.session.add(movie)
+            db.session.commit()
+            return jsonify({
+                'success':True,
+                'message':'Movie created successfully',
+                'code':200
+            }),200
     except:
-        return jsonify({'message':'some errror occured \n Please try again'})
+        db.session.rollback()
+        return jsonify({'message':'some errror occured. Please try again'})
 #3.Delete a movie
 @app.route('/movie/<int:id>',methods=['DELETE'])
 def delete_movie(id):
+    try:
+        movie=Movie.query.filter_by(id=id).one_or_none()
+        if movie is None:
+            abort(404)
+        else:
+            db.session.delete(movie)
+            db.session.commit()
+            return jsonify({
+                'movieName':movie.name
+                'success':True,
+                'message':'Movie successfully deleted'
+                'code':200
+            }),200
+    except:
+        db.session.rollback()
+        return jsonify({
+            'success':False,
+            'message':'Some error occurred. Please try again'
+            'error_code':503,
+        }),503
+#4. search for movie
+@app.route('/search/<string:search_term>',methods=["GET"])
+def get_movie(search_term):
     pass
 #Reviews endpoint
 
 #4.Create a review
 
-@app.route('/create/review',methods=['POST'])
-def create_review():
-    pass
+@app.route('/movie/<int:movie_id>/review',methods=['POST'])
+def create_review(movie_id):
+    try:
+        movie=Movie.query.filter_by(id=id).one_or_none()
+        if movie is None:
+            abort(404)
+        else:
+            data=request.get_json()
+            if 'review_text' not in data.keys():
+                return jsonify({
+                    'success':False,
+                    'message':'No data to update was provided in the url',
+                    'error_code':400
+                    }),400
+            else:
+                review_text=data['review_text']
+                review=Review(review_text=review_text)
+                review.parent=movie
+                db.session.add(review)
+                db.session.commit()
+                return jsonify({
+                    'success':True,
+                    'message':'Review successfully created',
+                    'code':200
+                }),200
+    except:
+        db.session.rollback()
+        return jsonify({
+            'success':True,
+            'message':'Error occurred. Please try again later'
+        }),503
 
 #5.Delete review
 @app.route('/movie/<int:movie_id>/review/<int:review_id>',methods=['DELETE'])
