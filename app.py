@@ -27,14 +27,18 @@ class Movie(db.Model):
     release_date=db.Column(db.Date)
     reviews=db.relationship("Review",backref="parent",lazy=True,cascade="all,delete",passive_deletes=True)
     
-    def format(ins):
-        return jsonify({
-            "success":True
-        })
+    def __str__(self):
+        return "The name of the movie is %s" % (self.name)
+    def __repr__(self):
+        return "The name of the movie is %s" % (self.name)
+    # def format(ins):
+    #     return jsonify({
+    #         "success":True
+    #     })
 class Review(db.Model):
     __tablename__="reviews"
     id=db.Column(db.Integer,primary_key=True)
-    review_text=db.Column(db.String(20))
+    review_text=db.Column(db.String(40))
     movie_id=db.Column(db.Integer,db.ForeignKey('movies.id',ondelete="cascade"),nullable=False)
     
         
@@ -71,7 +75,7 @@ def token(f):
 
 #api section
 #1.CRUD endpoints related to User
-@app.route('/create/user',methods=['POST'])
+@app.route('/users',methods=['POST'])
 def create_user():
     try:
         username,password="",""
@@ -86,7 +90,7 @@ def create_user():
             username=data["username"]
         if data and 'password' in data.keys():
             password=data["password"]
-        if username="" or password="":
+        if username=="" or password=="":
             return jsonify({
                     'success':False,
                     'message':'No data to update was provided in the url',
@@ -100,7 +104,7 @@ def create_user():
     except :
         db.session.rollback()
         return jsonify({'success':False,'error_message':"couldn't create a user account"})
-@app.route('/user/<int:id>',methods=['DELETE'])
+@app.route('/users/<int:id>',methods=['DELETE'])
 def delete_user(id=0):
     try:
         user=User.query.filter_by(id=id).one_or_none()
@@ -117,7 +121,7 @@ def delete_user(id=0):
     except:
         db.session.rollback()
         return jsonify({'message':'Some error occured'})
-@app.route('/update/user/<int:id>',methods=['PUT','PATCH'])
+@app.route('/update/users/<int:id>',methods=['PUT','PATCH'])
 def update_user(id):
     try:
         user=User.query.filter_by(id=id).one_or_none()
@@ -155,7 +159,7 @@ def update_user(id):
     except:
         return jsonify({'message':'Some error occured. Please try again'})
 #2.create a movie
-@app.route('/movie',methods=['POST'])
+@app.route('/movies',methods=['POST'])
 def create_movie():
     try:
         data=request.get_json()
@@ -174,7 +178,7 @@ def create_movie():
         db.session.rollback()
         return jsonify({'message':'some errror occured. Please try again'})
 #3.Delete a movie
-@app.route('/movie/<int:id>',methods=['DELETE'])
+@app.route('/movies/<int:id>',methods=['DELETE'])
 def delete_movie(id):
     try:
         movie=Movie.query.filter_by(id=id).one_or_none()
@@ -184,16 +188,16 @@ def delete_movie(id):
             db.session.delete(movie)
             db.session.commit()
             return jsonify({
-                'movieName':movie.name
+                'movieName':movie.name,
                 'success':True,
-                'message':'Movie successfully deleted'
+                'message':'Movie successfully deleted',
                 'code':200
             }),200
     except:
         db.session.rollback()
         return jsonify({
             'success':False,
-            'message':'Some error occurred. Please try again'
+            'message':'Some error occurred. Please try again',
             'error_code':503,
         }),503
 #4. search for movie
@@ -204,40 +208,65 @@ def get_movie(search_term):
 
 #4.Create a review
 
-@app.route('/movie/<int:movie_id>/review',methods=['POST'])
+@app.route('/movies/<int:movie_id>/reviews/',methods=['POST'])
 def create_review(movie_id):
     try:
-        movie=Movie.query.filter_by(id=id).one_or_none()
+        movie=Movie.query.filter_by(id=movie_id).one_or_none()
         if movie is None:
             abort(404)
         else:
             data=request.get_json()
-            if 'review_text' not in data.keys():
+            if "review_text" not in data.keys():
                 return jsonify({
                     'success':False,
                     'message':'No data to update was provided in the url',
                     'error_code':400
                     }),400
             else:
-                review_text=data['review_text']
-                review=Review(review_text=review_text)
+                review_t=data["review_text"]
+                review=Review(review_text=review_t)
                 review.parent=movie
+                # return jsonify({
+                #     'review':review.review_text,
+                #     'review_parent':review.parent.id
+                # })
                 db.session.add(review)
                 db.session.commit()
                 return jsonify({
                     'success':True,
                     'message':'Review successfully created',
                     'code':200
-                }),200
+                })
     except:
         db.session.rollback()
         return jsonify({
-            'success':True,
-            'message':'Error occurred. Please try again later'
+            'success':False,
+            'message':' review Error occurred. Please try again later'
+        }),503
+# List reviews of a movie
+@app.route('/movies/<int:id>/reviews/',methods=["GET"])
+def get_movie_reviews(id):
+    try:
+        movie=Movie.query.filter_by(id=id).one_or_none()
+        if movie is None:
+            abort(404)
+        else:
+            reviews=Review.query.filter_by(movie_id=movie.id).all()
+            if reviews is not None:
+                return jsonify({
+                    'success':True,
+                    'reviews':reviews,
+                    'total_reviews':len(reviews)
+                })
+    except:
+        return jsonify({
+            'success':False,
+            'message':'Some error occured .Please try again',
+            'error_code':503
         }),503
 
 #5.Delete review
-@app.route('/movie/<int:movie_id>/review/<int:review_id>',methods=['DELETE'])
+@app.route('/movies/<int:movie_id>/reviews/<int:review_id>',methods=['DELETE'])
 def delete_review():
     pass
 # error handler section
